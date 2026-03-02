@@ -50,18 +50,35 @@ rem -- MAIN --
 
 rem -- INSTALL VISUAL STUDIO IF NOT FOUND --
 setlocal EnableDelayedExpansion
-set "vs_found=false"
-if exist "%ProgramW6432%\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat" (
-    set "vs_found=true"
+
+set "vs_19_found=false"
+if exist "%programfiles(x86)%\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat" (
+    set "vs_19_found=true"
 )
-if exist "%ProgramW6432%\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\vcvars64.bat" (
-    set "vs_found=true"
+if exist "%programfiles(x86)%\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvars64.bat" (
+    set "vs_19_found=true"
 )
-if exist "%ProgramW6432%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat" (
-    set "vs_found=true"
+if exist "%programfiles(x86)%\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat" (
+    set "vs_19_found=true"
+)
+if "!vs_19_found!"=="true" (
+    echo Found Visual Studio 2019.
+    goto end_vs_install
+) else (
+    echo Could not find Visual Studio 2019.
 )
 
-if "!vs_found!"=="true" (
+set "vs_22_found=false"
+if exist "%ProgramW6432%\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat" (
+    set "vs_22_found=true"
+)
+if exist "%ProgramW6432%\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\vcvars64.bat" (
+    set "vs_22_found=true"
+)
+if exist "%ProgramW6432%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat" (
+    set "vs_22_found=true"
+)
+if "!vs_22_found!"=="true" (
     echo Found Visual Studio 2022.
     goto end_vs_install
 ) else (
@@ -79,20 +96,6 @@ del %cd%\Temp\vs_community.exe
 rmdir %cd%\Temp
 
 :end_vs_install
-
-rem -- INSTALL NINJA --
-ninja --version >nul 2>nul
-if errorlevel 1 (
-    echo Could not find Ninja. Downloading...
-    curl -L -o %USERPROFILE%\AppData\Local\Microsoft\WindowsApps\ninja-win.zip https://github.com/ninja-build/ninja/releases/download/v%ninja_version%/ninja-win.zip || exit /b
-    powershell -command "Expand-Archive $env:USERPROFILE\AppData\Local\Microsoft\WindowsApps\ninja-win.zip $env:USERPROFILE\AppData\Local\Microsoft\WindowsApps\ninja-win" || exit /b
-    move %USERPROFILE%\AppData\Local\Microsoft\WindowsApps\ninja-win\ninja.exe %USERPROFILE%\AppData\Local\Microsoft\WindowsApps\ninja.exe || exit /b
-    rmdir /s /q %USERPROFILE%\AppData\Local\Microsoft\WindowsApps\ninja-win
-    del /f %USERPROFILE%\AppData\Local\Microsoft\WindowsApps\ninja-win.zip
-    echo Installed Ninja %ninja_version%.
-) else (
-    echo Found Ninja.
-)
 
 
 rem -- INSTALL PYTHON PACKAGES --

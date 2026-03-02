@@ -70,11 +70,11 @@ std::string ACarlaRecorder::ShowFileActorsBlocked(std::string Name, double MinTi
 
 std::string ACarlaRecorder::ReplayFile(
   std::string Name, double TimeStart, double Duration,
-  uint32_t FollowId, const FTransform Offset, bool ReplaySensors,
+  uint32_t FollowId, const FTransform Offset, bool ReplaySensors, bool ReplayWeather,
   std::string MapOverride)
 {
   Stop();
-  return Replayer.ReplayFile(Name, TimeStart, Duration, FollowId, Offset, ReplaySensors, MapOverride);
+  return Replayer.ReplayFile(Name, TimeStart, Duration, FollowId, Offset, ReplaySensors, ReplayWeather, MapOverride);
 }
 
 void ACarlaRecorder::SetReplayerTimeFactor(double TimeFactor)
@@ -160,13 +160,21 @@ void ACarlaRecorder::Ticking(float DeltaSeconds)
           break;
       }
     }
+
+    // save the initial weather
+    if (bFirstTick)
+    {
+      AddExistingWeather();
+      bFirstTick = false;
+    }
+
     // Add the DReyeVR data
     AddDReyeVRData();
 
     // write all data for this frame
     Write(DeltaSeconds);
   }
-  else if (Episode->GetReplayer()->IsEnabled())
+  if (Episode->GetReplayer()->IsEnabled())
   {
     // replayer
     Episode->GetReplayer()->Tick(DeltaSeconds);
@@ -480,10 +488,11 @@ void ACarlaRecorder::AddWeather(const FWeatherParameters& WeatherParams)
 std::string ACarlaRecorder::Start(
   std::string Name,
   FString MapName,
-  bool AdditionalData)
+  bool AdditionalData,
+  bool StopReplayer)
 {
   // stop replayer if any in course
-  if (Replayer.IsEnabled())
+  if (StopReplayer && Replayer.IsEnabled())
     Replayer.Stop();
 
   // stop recording
@@ -537,6 +546,9 @@ void ACarlaRecorder::Stop(void)
   }
 
   Clear();
+
+  // Reset the flag
+  bFirstTick = true;
 }
 
 void ACarlaRecorder::Clear(void)
@@ -593,6 +605,7 @@ void ACarlaRecorder::Write(double DeltaSeconds)
   LightScenes.Write(File);
   Wheels.Write(File);
   Bikers.Write(File);
+  Weathers.Write(File);
 
   // additional info
   if (bAdditionalData)
@@ -702,6 +715,14 @@ void ACarlaRecorder::AddCollision(AActor *Actor1, AActor *Actor2)
     }
 
     Collisions.Add(std::move(Collision));
+  }
+}
+
+void ACarlaRecorder::AddWeather(const CarlaRecorderWeather &Weather)
+{
+  if (Enabled)
+  {
+    Weathers.Add(Weather);
   }
 }
 
@@ -824,6 +845,31 @@ void ACarlaRecorder::AddExistingActors(void)
     }
   }
 
+}
+
+void ACarlaRecorder::AddExistingWeather(void)
+{
+  AWeather *WeatherActor = Episode->GetWeather();
+  if (WeatherActor != nullptr)
+  {
+    CarlaRecorderWeather RecorderWeather;
+    const auto &Params = WeatherActor->GetCurrentWeather();
+    RecorderWeather.Cloudiness              = Params.Cloudiness;
+    RecorderWeather.Precipitation           = Params.Precipitation;
+    RecorderWeather.PrecipitationDeposits   = Params.PrecipitationDeposits;
+    RecorderWeather.WindIntensity           = Params.WindIntensity;
+    RecorderWeather.SunAzimuthAngle         = Params.SunAzimuthAngle;
+    RecorderWeather.SunAltitudeAngle        = Params.SunAltitudeAngle;
+    RecorderWeather.FogDensity              = Params.FogDensity;
+    RecorderWeather.FogDistance             = Params.FogDistance;
+    RecorderWeather.FogFalloff              = Params.FogFalloff;
+    RecorderWeather.Wetness                 = Params.Wetness;
+    RecorderWeather.ScatteringIntensity     = Params.ScatteringIntensity;
+    RecorderWeather.MieScatteringScale      = Params.MieScatteringScale;
+    RecorderWeather.RayleighScatteringScale = Params.RayleighScatteringScale;
+    RecorderWeather.DustStorm               = Params.DustStorm;
+    AddWeather(RecorderWeather);
+  }
 }
 
 void ACarlaRecorder::AddStartingWeather(void)
